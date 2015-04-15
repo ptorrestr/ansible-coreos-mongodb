@@ -1,0 +1,127 @@
+---
+# Create docker directory for mongo data
+- name: Create docker directory for mongodata
+  file: path={{ playbook_dir }}/docker/docker-mongodata state=directory
+  tags:
+    - configuration
+
+- name: Create Mongodata Dockerfile
+  template: src=mongodata-dockerfile.j2 dest={{ playbook_dir }}/docker/docker-mongodata/Dockerfile
+  tags:
+    - configuration
+
+- name: Copy extra files for Mongodata image
+  copy: src=forever.sh dest={{ playbook_dir }}//docker/docker-mongodata/forever.sh
+  copy: src=mongodb.conf dest={{ playbook_dir }}//docker/docker-mongodata/mongodb.conf
+  tags:
+    - configuration
+
+- name: Build Mongodata image
+  docker_image: docker_url=tcp://127.0.0.1:2375 path="{{ playbook_dir }}/docker/docker-mongodata" name="{{ mongodata_image_name }}" state="build"
+  tags:
+    - docker
+    - docker_build
+
+- name: Push Mongodata image to repo
+  shell: "docker push {{ mongodata_image_name }}"
+  tags:
+    - docker
+    - docker_push
+
+# Repeat same steps for mongodb
+- name: Create docker directory for mongodb
+  file: path={{ playbook_dir }}/docker/docker-mongodb state=directory
+  tags:
+    - configuration
+
+- name: Create Mongodb Dockerfile
+  template: src=mongodb-dockerfile.j2 dest={{ playbook_dir }}/docker/docker-mongodb/Dockerfile
+  tags:
+    - configuration
+
+- name: Copy extra files for Mongodb image
+  copy: src=mongo-entrypoint.sh dest={{ playbook_dir }}/docker/docker-mongodb/mongo-entrypoint.sh
+  tags:
+    - configuration
+
+- name: Build Mongodb image
+  docker_image: docker_url=tcp://127.0.0.1:2375 path="{{ playbook_dir }}/docker/docker-mongodb" name="{{ mongodb_image_name }}" state="build"
+  tags:
+    - docker
+    - docker_build
+
+- name: Push Mongodb image to repo
+  shell: "docker push {{ mongodb_image_name }}"
+  tags:
+    - docker
+    - docker_push
+
+# Create units directory
+- name: Create Units directory
+  file: path={{ playbook_dir }}/units state=directory
+  tags:
+    - configuration
+
+# Create units for mongodata
+- name: Create Mongodata Units
+  template: src=mongodata.x.service.j2 dest={{ playbook_dir }}/units/mongodata.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - configuration
+
+- name: Submit Mongodata units
+  shell: fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongodata.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_submit
+
+- name: Start Mongodata units
+  shell: sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongodata.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_start
+
+# Create units for mongodb
+- name: Create Mongodb Units
+  template: src=mongodb.x.service.j2 dest={{ playbook_dir }}/units/mongodb.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - configuration
+
+- name: Submit Mongodb units
+  shell: fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongodb.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_submit
+
+- name: Start Mongodb units
+  shell: sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongodb.{{ item }}.service
+  with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_start
+
+#Create units for mongoreplica
+- name: Create Mongoreplica Units
+  template: src=mongoreplica.service.j2 dest={{ playbook_dir }}/units/mongoreplica.service
+  #with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - configuration
+
+- name: Submit Mongoreplica units
+  shell: fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongoreplica.service
+service
+  #with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_submit
+
+- name: Start Mongoreplica units
+  shell: sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongoreplica.service
+  #with_sequence: count={{ mongo_instances_number }}
+  tags:
+    - fleet
+    - fleet_start

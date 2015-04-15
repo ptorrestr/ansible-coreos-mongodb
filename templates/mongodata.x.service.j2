@@ -1,0 +1,25 @@
+[Unit]
+Description=Mongo Data Volume Service
+After=docker.service
+Requires=docker.service
+After=etcd.service
+Requires=etcd.service
+
+[Service]
+User=core
+KillMode=none
+
+EnvironmentFile=/etc/environment
+ExecStartPre=/usr/bin/docker pull {{mongodata-image-name}} 
+ExecStartPre=-/usr/bin/docker rm mongodata%i
+ExecStart=/usr/bin/docker run --rm --name mongodata%i {{mongodata-image-name}}
+ExecStop=/usr/bin/docker stop mongodata%i
+ExecStopPost=-/usr/bin/docker rm mongodata%i
+
+Restart=always
+RestartSec=10s
+
+[X-Fleet]
+X-Conflicts=%p.*.service
+Conflicts=%p.*.service
+Conflicts=mongodata.*.service

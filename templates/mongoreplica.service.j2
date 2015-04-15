@@ -1,0 +1,77 @@
+[Unit]
+Description=ReplicaSet Configurator
+
+[Service]
+KillMode=none
+
+TimeoutStartSec=0
+TimeoutStopSec=360
+EnvironmentFile=/etc/environment
+ExecStartPre=/bin/bash -c "docker pull {{mongodb-image-name}}"
+ExecStart=/bin/bash -c 'set -e; \
+    SITE_ROOT_PWD=$(etcdctl get /mongo/replica/siteRootAdmin/pwd 2>/dev/null || true ); \
+    REPLICA_KEY=$(etcdctl get /mongo/replica/key 2>/dev/null || true); \
+    REPLICA_MODE=$(etcdctl get /mongo/replica/switched_to_replica_mode 2>/dev/null); \
+    if (test -z "$SITE_ROOT_PWD") && (test -z "$REPLICA_KEY") && (test -n "$REPLICA_MODE"); \
+    then \
+        echo "WAITING..."; sleep 30; exit 1; \
+    fi; \
+    echo "STARTING...."; \
+    CHECK_MONGO=$(/usr/bin/docker ps | grep mongodb); \
+    RS_INIT_DONE=$(etcdctl get /mongo/replica/rs_init_done 2>/dev/null || true ); \
+    ADD_CMDS=$(etcdctl ls /mongo/replica/nodes | grep -v "$COREOS_PRIVATE_IPV4" | xargs -I{} basename {} | xargs -I{} echo "rs.add(\'{}:27017\');"); \
+    \
+    if (test -z "$RS_INIT_DONE") && (test -n "$CHECK_MONGO" ); \
+    then \
+        docker run -t --volumes-from mongodata1 {{mongodb-image-name}} \
+            mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD \
+            --eval "rs.status().startupStatus === 3 && rs.initiate();"; \
+        etcdctl set /mongo/replica/rs_init_done finished; \
+        echo "RS_INIT_DONE...."; \
+        /usr/bin/sleep 60; \
+        docker run -t  --volumes-from mongodata1 {{mongodb-image-name}} \
+            mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD \
+            --eval "var config = rs.config(); if (config.members.length === 1) { config.members[0].host = \'$COREOS_PRIVATE_IPV4\'; rs.reconfig(config); }"; \
+        etcdctl set /mongo/replica/rs_config_done finished; \
+        echo "RS_CONFIG_DONE...."; \
+        docker run -t --volumes-from mongodata1 {{mongodb-image-name}} \
+        mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD --eval "$ADD_CMDS"; \
+        etcdctl set /mongo/replica/rs_adding_node_done finished; \
+        echo "RS_ADDING_NODES_DONE...."; \
+    else \
+        sleep 30; exit 1; \
+    fi;'
+
+ExecStartPost=/bin/bash -c 'set -e; \
+    RS_INIT_DONE=$(etcdctl get /mongo/replica/rs_init_done 2>/dev/null || true ); \
+    RS_CONFIG_DONE=$(etcdctl get /mongo/replica/rs_config_done 2>/dev/null || true ); \
+    RS_ADDING_NODES_DONE=$(etcdctl get /mongo/replica/rs_adding_node_done 2>/dev/null || true ); \
+    MONGO_URL=$(etcdctl get /mongo/replica/url 2>/dev/null || true ); \
+    \
+    if (test -n "$RS_ADDING_NODES_DONE") && (test -z "$MONGO_URL"); \
+    then \
+        SITE_USR_ADMIN_PWD=$(/usr/bin/etcdctl get /mongo/replica/siteUserAdmin/pwd 2>/dev/null); \
+        REPLICA_NAME=$(/usr/bin/etcdctl get /mongo/replica/name 2>/dev/null ); \
+        TEMP_STR=""; \
+        for ip in `/usr/bin/etcdctl ls /mongo/replica/nodes | xargs -I{} basename {}` ; \
+        do \
+            TEMP_STR="$TEMP_STR$ip:27017,"; \
+        done; \
+        MONGO_NODES=$(echo $TEMP_STR | sed \'$s/.$//\'); \
+        MONGODB="mongodb://siteUserAdmin:$SITE_USR_ADMIN_PWD@$MONGO_NODES/?replicaSet=$REPLICA_NAME&connectTimeoutMS=300000"; \
+        SAVE_MONGO_URL=$(/usr/bin/etcdctl get /mongo/replica/url 2>/dev/null || /usr/bin/etcdctl set /mongo/replica/url $MONGODB); \
+        echo "SAVED MONGO URL"; \
+        sleep 10; exit 0; \
+    fi; \
+    \
+    if (test -n "$RS_INIT_DONE") && (test -n "$RS_CONFIG_DONE") && (test -n "$RS_ADDING_NODES_DONE") && (test -n "$MONGO_URL"); \
+    then \
+        echo "YOUR MONGO REPLICA SET IS CONFIGURED."; \
+        sleep 10; \
+        etcdctl set /mongo/replica/configured finished; exit 0; \
+    else \
+        echo "PLEASE WAIT. WE NEED TO SETUP REPLICA SET."; \
+        sleep 10; exit 1; \
+    fi;'
+
+Restart=on-failure
