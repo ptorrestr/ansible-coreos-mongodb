@@ -10,9 +10,9 @@ User=core
 KillMode=none
 
 EnvironmentFile=/etc/environment
-ExecStartPre=/usr/bin/docker pull {{mongodata-image-name}} 
+ExecStartPre=/usr/bin/docker pull {{ mongodata_image_name }} 
 ExecStartPre=-/usr/bin/docker rm mongodata%i
-ExecStart=/usr/bin/docker run --rm --name mongodata%i {{mongodata-image-name}}
+ExecStart=/usr/bin/docker run --rm --name mongodata%i {{ mongodata_image_name }}
 ExecStop=/usr/bin/docker stop mongodata%i
 ExecStopPost=-/usr/bin/docker rm mongodata%i
 
@@ -20,6 +20,5 @@ Restart=always
 RestartSec=10s
 
 [X-Fleet]
-X-Conflicts=%p.*.service
-Conflicts=%p.*.service
-Conflicts=mongodata.*.service
+X-Conflicts=%p@*.service
+Conflicts=%p@*.service

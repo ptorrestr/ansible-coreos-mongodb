@@ -7,7 +7,7 @@ KillMode=none
 TimeoutStartSec=0
 TimeoutStopSec=360
 EnvironmentFile=/etc/environment
-ExecStartPre=/bin/bash -c "docker pull {{mongodb-image-name}}"
+ExecStartPre=/bin/bash -c "docker pull {{ mongodb_image-name }}"
 ExecStart=/bin/bash -c 'set -e; \
     SITE_ROOT_PWD=$(etcdctl get /mongo/replica/siteRootAdmin/pwd 2>/dev/null || true ); \
     REPLICA_KEY=$(etcdctl get /mongo/replica/key 2>/dev/null || true); \
@@ -23,18 +23,18 @@ ExecStart=/bin/bash -c 'set -e; \
     \
     if (test -z "$RS_INIT_DONE") && (test -n "$CHECK_MONGO" ); \
     then \
-        docker run -t --volumes-from mongodata1 {{mongodb-image-name}} \
+        docker run -t --volumes-from mongodata1 {{ mongodb_image_name }} \
             mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD \
             --eval "rs.status().startupStatus === 3 && rs.initiate();"; \
         etcdctl set /mongo/replica/rs_init_done finished; \
         echo "RS_INIT_DONE...."; \
         /usr/bin/sleep 60; \
-        docker run -t  --volumes-from mongodata1 {{mongodb-image-name}} \
+        docker run -t  --volumes-from mongodata1 {{ mongodb_image_name }} \
             mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD \
             --eval "var config = rs.config(); if (config.members.length === 1) { config.members[0].host = \'$COREOS_PRIVATE_IPV4\'; rs.reconfig(config); }"; \
         etcdctl set /mongo/replica/rs_config_done finished; \
         echo "RS_CONFIG_DONE...."; \
-        docker run -t --volumes-from mongodata1 {{mongodb-image-name}} \
+        docker run -t --volumes-from mongodata1 {{ mongodb_image_name }} \
         mongo $COREOS_PRIVATE_IPV4/admin -u siteRootAdmin -p $SITE_ROOT_PWD --eval "$ADD_CMDS"; \
         etcdctl set /mongo/replica/rs_adding_node_done finished; \
         echo "RS_ADDING_NODES_DONE...."; \
