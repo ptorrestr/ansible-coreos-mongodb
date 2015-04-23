@@ -4,16 +4,13 @@ After=docker.service
 Requires=docker.service
 After=etcd.service
 Requires=etcd.service
-After=mongos@%i.service
-Requires=mongos@%i.service
-PartOf=mongos@%i.service
 
 [Service]
 KillMode=none
 TimeoutStartSec=360
 TimeoutStopSec=360
 EnvironmentFile=/etc/environment
-Environment="MONGO_SHARDS=/home/core/mongoshards"
+Environment="MONGO_ARGS= --eval" "MONGO_SHARDS=/home/core/mongoshards"
 ExecStartPre=/bin/bash -c '\
 	rm -f $MONGO_SHARDS; \
 	mongoshards=`/usr/bin/etcdctl ls /mongodb/rs/rs1`; \
@@ -22,14 +19,12 @@ ExecStartPre=/bin/bash -c '\
 		/usr/bin/etcdctl get $entry >> $MONGO_SHARDS; \
 	done; \
 	'
-ExecStartPre=/usr/bin/docker pull {{ mongo_image_name }}
+ExecStartPre=/usr/bin/docker pull {{ mongodb_image_name }}
 ExecStart=/bin/bash -c '\
 	MONGO_SHARDS_CMD=`cat $MONGO_SHARDS`; \
 	for SHARD in $MONGO_SHARDS_CMD; do \
-		/usr/bin/docker exec mongos%i /usr/bin/mongo --eval "sh.addShard(\'$SHARD\')"; \
+		/usr/bin/docker run --entrypoint /usr/bin/mongo {{ mongodb_image_name }} --host ${COREOS_PUBLIC_IPV4} --port 27017 $MONGO_ARGS "sh.addShard(\'$SHARD\')"; \
 	done; \
-	/usr/bin/docker exec mongos%i /usr/bin/mongo admin --eval "db.addUser({user:\'admin\',pwd:\'123456\',roles:[\'userAdminAnyDatabase\',\'clusterAdmin\',\'readAnyDatabase\']})"; \
-	/usr/bin/docker exec mongos%i /usr/bin/mongo admin -u admin -p 123456 --eval "db.addUser({user:\'root\',pwd:\'123456\',roles:[\'root\']})";\
 	'
 
 [X-Fleet]

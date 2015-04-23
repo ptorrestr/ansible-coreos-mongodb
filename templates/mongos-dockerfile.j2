@@ -1,0 +1,10 @@
+FROM {{ mongo_image_name }}
+MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
+
+ADD mongos.conf /etc/mongos.conf
+ENTRYPOINT ["/usr/bin/mongos"]
+
+# Expose ports.
+#   - 27017: process
+EXPOSE 27017
+CMD ["-f", "/etc/mongos.conf"]

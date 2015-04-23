@@ -29,33 +29,71 @@
     - docker
     - docker_push
 
-# Repeat same steps for mongodb
-- name: Create docker directory for mongodb
-  file: path="{{ playbook_dir }}/docker/docker-mongodb" state=directory
-  tags:
-    - configuration
-
-- name: Create Mongodb Dockerfile
-  template: src=mongodb-dockerfile.j2 dest="{{ playbook_dir }}/docker/docker-mongodb/Dockerfile"
-  tags:
-    - configuration
-
-- name: Copy extra files for Mongodb image
-  copy: src="{{ item }}" dest="{{ playbook_dir }}/docker/docker-mongodb/{{ item }}"
+# Repeat same steps for mongo images
+- name: Create docker directories for mongodb
+  file: path="{{ playbook_dir }}/docker/{{ item }}" state=directory
   with_items:
-    - "entrypoint.sh"
+    - "mongo"
+    - "mongod"
+    - "mongoc"
+    - "mongos"
+  tags:
+    - configuration
+
+- name: Create Mongodb Dockerfiles
+  template: src="{{ item }}-dockerfile.j2" dest="{{ playbook_dir }}/docker/{{ item }}/Dockerfile"
+  with_items:
+    - "mongo"
+    - "mongod"
+    - "mongoc"
+    - "mongos"
+  tags:
+    - configuration
+
+- name: Copy extra files for Mongod image
+  copy: src="{{ item }}" dest="{{ playbook_dir }}/docker/mongod/{{ item }}"
+  with_items:
     - "mongod.conf"
   tags:
     - configuration
 
-- name: Build Mongodb image
-  docker_image: docker_url="tcp://{{ registry_hostname }}:2375" path="{{ playbook_dir }}/docker/docker-mongodb" name="{{ mongodb_image_name }}" state="build"
+- name: Copy extra files for Mongoc image
+  copy: src="{{ item }}" dest="{{ playbook_dir }}/docker/mongoc/{{ item }}"
+  with_items:
+    - "mongoc.conf"
+  tags:
+    - configuration
+
+- name: Copy extra files for Mongos image
+  copy: src="{{ item }}" dest="{{ playbook_dir }}/docker/mongos/{{ item }}"
+  with_items:
+    - "mongos.conf"
+  tags:
+    - configuration
+
+- name: Create key file for Mongo
+  shell: "openssl rand -base64 741 > {{ playbook_dir }}/docker/mongo/keyfile && chmod 600 {{ playbook_dir }}/docker/mongo/keyfile"
+  tags:
+    - configuration
+
+- name: Build Mongodb images
+  docker_image: docker_url="tcp://{{ registry_hostname }}:2375" path="{{ playbook_dir }}/docker/{{ item.name }}" name="{{ item.image }}" state="build"
+  with_items:
+    - { name: "mongo", image: "{{ mongo_image_name }}" }
+    - { name: "mongod", image: "{{ mongod_image_name }}" }
+    - { name: "mongoc", image: "{{ mongoc_image_name }}" }
+    - { name: "mongos", image: "{{ mongos_image_name }}" }
   tags:
     - docker
     - docker_build
 
-- name: Push Mongodb image to repo
-  shell: "docker -H tcp://{{ registry_hostname }}:2375 push {{ mongodb_image_name }}"
+- name: Push Mongodb images to repo
+  shell: "docker -H tcp://{{ registry_hostname }}:2375 push {{ item }}"
+  with_items:
+    - "{{ mongo_image_name }}"
+    - "{{ mongod_image_name }}"
+    - "{{ mongoc_image_name }}"
+    - "{{ mongos_image_name }}"
   tags:
     - docker
     - docker_push
@@ -87,43 +125,43 @@
     - fleet
     - fleet_start
 
-# Create units for mongodb
-- name: Create Mongodb Units
-  template: src=mongodb@x.service.j2 dest="{{ playbook_dir }}/units/mongodb@{{ item }}.service"
+# Create units for mongod
+- name: Create Mongod Units
+  template: src=mongod@x.service.j2 dest="{{ playbook_dir }}/units/mongod@{{ item }}.service"
   with_sequence: count="{{ mongo_instances_number }}"
   tags:
     - configuration
 
-- name: Submit Mongodb units
-  shell: "fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongodb@{{ item }}.service"
+- name: Submit Mongod units
+  shell: "fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongod@{{ item }}.service"
   with_sequence: count="{{ mongo_instances_number }}"
   tags:
     - fleet
     - fleet_submit
 
-- name: Start Mongodb units
-  shell: "sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongodb@{{ item }}.service"
+- name: Start Mongod units
+  shell: "sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongod@{{ item }}.service"
   with_sequence: count="{{ mongo_instances_number }}"
   tags:
     - fleet
     - fleet_start
 
-# Create units for mongocfg
-- name: Create Mongocfg Units
-  template: src=mongocfg@x.service.j2 dest="{{ playbook_dir }}/units/mongocfg@{{ item }}.service"
+# Create units for mongoc
+- name: Create Mongoc Units
+  template: src=mongoc@x.service.j2 dest="{{ playbook_dir }}/units/mongoc@{{ item }}.service"
   with_sequence: count="{{ mongo_instances_number }}"
   tags:
     - configuration
 
-- name: Submit Mongocfg units
-  shell: "fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongocfg@{{ item }}.service"
+- name: Submit Mongoc units
+  shell: "fleetctl --tunnel {{ fleet_endpoint }} submit {{ playbook_dir }}/units/mongoc@{{ item }}.service"
   with_sequence: count="{{ mongo_instances_number }}"
   tags:
     - fleet
     - fleet_submit
 
-- name: Start Mongocfg units
-  shell: "sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongocfg@{{ item }}.service"
+- name: Start Mongoc units
+  shell: "sleep 5 && fleetctl --tunnel {{ fleet_endpoint }} start {{ playbook_dir }}units/mongoc@{{ item }}.service"
   with_sequence: count={{ mongo_instances_number }}
   tags:
     - fleet

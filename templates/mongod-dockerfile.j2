@@ -1,19 +1,12 @@
-FROM debian:jessie
+FROM {{ mongo_image_name }}
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
-RUN apt-get update
-RUN apt-get install -y mongodb-server
-
 ADD mongod.conf /etc/mongod.conf
-ADD entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/usr/bin/mongod"]
 
 # Expose ports.
 #   - 27017: process
 #   - 28017: http
-#   - 27019: config srv
 EXPOSE 27017
 EXPOSE 28017
-EXPOSE 27019
 CMD ["-f", "/etc/mongod.conf"]

@@ -10,7 +10,7 @@ KillMode=none
 TimeoutStartSec=360
 TimeoutStopSec=360
 EnvironmentFile=/etc/environment
-Environment="MONGO_ARGS=--configdb" "MONGO_TMP_CFGS=/tmp/mongocfgs" "MONGO_CFGS=/home/core/mongocfgs"
+Environment="MONGO_ARGS=-f /etc/mongos.conf --configdb" "MONGO_TMP_CFGS=/tmp/mongocfgs" "MONGO_CFGS=/home/core/mongocfgs"
 ExecStartPre=/bin/bash -c '\
 	rm -f $MONGO_TMP_CFGS; \
 	rm -f $MONGO_CFGS; \
@@ -21,11 +21,11 @@ ExecStartPre=/bin/bash -c '\
 	done; \
 	cat $MONGO_TMP_CFGS | /usr/bin/sed "s/.$//" > $MONGO_CFGS; \
 	'
-ExecStartPre=/usr/bin/docker pull {{ mongodb_image_name }}
+ExecStartPre=/usr/bin/docker pull {{ mongos_image_name }}
 ExecStartPre=-/usr/bin/docker rm -f mongos%i
 ExecStart=/bin/bash -c '\
 	MONGO_CFGS_CMD=`cat $MONGO_CFGS`; \
-	/usr/bin/docker run -p 27017:27017 --name mongos%i --entrypoint /usr/bin/mongos {{ mongodb_image_name }} $MONGO_ARGS $MONGO_CFGS_CMD; \
+	/usr/bin/docker run -p 27017:27017 --name mongos%i {{ mongos_image_name }} $MONGO_ARGS $MONGO_CFGS_CMD; \
 	'
 ExecStop=/usr/bin/docker stop -t 60 mongos%i
 ExecStopPost=-/usr/bin/docker rm -f mongos%i

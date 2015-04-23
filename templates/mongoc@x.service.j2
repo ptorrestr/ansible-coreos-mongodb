@@ -12,17 +12,15 @@ KillMode=none
 TimeoutStartSec=360
 TimeoutStopSec=360
 EnvironmentFile=/etc/environment
-Environment="MONGO_ARGS=--configsvr --dbpath /var/lib/mongodb --port 27019"
 ExecStartPre=/usr/bin/etcdctl set /mongodb/cfgs/cfg%i ${COREOS_PUBLIC_IPV4}:27019
-ExecStartPre=/usr/bin/docker pull {{ mongodb_image_name }}
+ExecStartPre=/usr/bin/docker pull {{ mongoc_image_name }}
 ExecStartPre=-/usr/bin/docker rm -f mongocfg%i
-ExecStart=/usr/bin/docker run -p 27019:27019 --name mongocfg%i {{ mongodb_image_name }} $MONGO_ARGS
-ExecStop=/usr/bin/docker stop -t 60 mongocfg%i
-ExecStopPost=-/usr/bin/docker rm -f mongocfg%i
+ExecStart=/usr/bin/docker run -p 27019:27019 --name mongoc%i {{ mongoc_image_name }}
+ExecStop=/usr/bin/docker stop -t 60 mongoc%i
+ExecStopPost=-/usr/bin/docker rm -f mongoc%i
 ExecStopPost=/usr/bin/etcdctl rm /mongodb/cfgs/cfg%i
 Restart=on-failure
 
 [X-Fleet]
-X-Conflicts=%p@*.service
 Conflicts=%p@*.service
 MachineOf=mongodata@%i.service
