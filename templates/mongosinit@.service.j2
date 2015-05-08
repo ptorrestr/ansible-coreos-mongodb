@@ -28,7 +28,7 @@ ExecStart=/bin/bash -c '\
 	for SHARD in $MONGO_SHARDS_CMD; do \
 		/usr/bin/docker exec mongos%i /usr/bin/mongo --eval "sh.addShard(\'$SHARD\')"; \
 	done; \
-	/usr/bin/docker exec mongos%i /usr/bin/mongo admin --eval "db.addUser({user:\'admin\',pwd:\'123456\',roles:[\'userAdminAnyDatabase\',\'clusterAdmin\',\'readAnyDatabase\']})"; \
+	/usr/bin/docker exec mongos%i /usr/bin/mongo admin --eval "db.addUser({user:\'admin\',pwd:\'123456\',roles:[\'userAdminAnyDatabase\',\'clusterAdmin\',\'readWriteAnyDatabase\',\'dbAdminAnyDatabase\']})"; \
 	/usr/bin/docker exec mongos%i /usr/bin/mongo admin -u admin -p 123456 --eval "db.addUser({user:\'root\',pwd:\'123456\',roles:[\'root\']})";\
 	'
 
