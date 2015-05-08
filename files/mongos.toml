@@ -1,0 +1,9 @@
+[template]
+
+src = "mongos.conf.tmpl"
+dest = "/etc/mongos.conf"
+keys = [ "/services/mongo" ]
+owner = "root"
+mode = "0644"
+check_cmd = "/usr/bin/mongos --test -f /etc/mongos.conf"
+reload_cmd = "/usr/sbin/service mongos reload"

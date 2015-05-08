@@ -1,0 +1,6 @@
+port=27017
+logpath=/var/log/mongodb/mongodb.log
+logappend=true
+{{$configdb := getvs "/services/mongo/mongoc/*"}}
+configdb={{join $configdb ","}}
+keyFile=/etc/keyfile

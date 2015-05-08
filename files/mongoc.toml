@@ -1,0 +1,9 @@
+[template]
+
+src = "mongoc.conf.tmpl"
+dest = "/etc/mongoc.conf"
+keys = [ "/services/mongo" ]
+owner = "root"
+mode = "0644"
+check_cmd = "/usr/bin/mongod --sysinfo"
+reload_cmd = "/usr/sbin/service mongoc reload"

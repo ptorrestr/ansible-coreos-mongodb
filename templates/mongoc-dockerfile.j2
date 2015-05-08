@@ -1,10 +1,15 @@
 FROM {{ mongo_image_name }}
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
-ADD mongoc.conf /etc/mongoc.conf
-ENTRYPOINT ["/usr/bin/mongod"]
+#Add files
+COPY mongoc /etc/init.d/mongoc
+COPY mongoc.toml /etc/confd/conf.d/mongoc.toml
+COPY mongoc.conf.tmpl /etc/confd/templates/mongoc.conf.tmpl
+COPY confd-watch-mongoc /usr/local/bin/confd-watch
+RUN touch /etc/mongoc.conf
+RUN chmod +x /etc/init.d/mongoc
+RUN chmod +x /usr/local/bin/confd-watch
+RUN update-rc.d mongoc defaults
 
-# Expose ports.
-#   - 27019: config srv
 EXPOSE 27019
-CMD ["-f", "/etc/mongoc.conf"]
+ENTRYPOINT ["/usr/local/bin/confd-watch"]

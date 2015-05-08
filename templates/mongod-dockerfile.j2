@@ -1,12 +1,16 @@
 FROM {{ mongo_image_name }}
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
-ADD mongod.conf /etc/mongod.conf
-ENTRYPOINT ["/usr/bin/mongod"]
+#Add files
+COPY mongod /etc/init.d/mongod
+COPY mongod.toml /etc/confd/conf.d/mongod.toml
+COPY mongod.conf.tmpl /etc/confd/templates/mongod.conf.tmpl
+COPY confd-watch-mongod /usr/local/bin/confd-watch
+RUN touch /etc/mongod.conf
+RUN chmod +x /etc/init.d/mongod
+RUN chmod +x /usr/local/bin/confd-watch
+RUN update-rc.d mongod defaults
 
-# Expose ports.
-#   - 27017: process
-#   - 28017: http
 EXPOSE 27017
 EXPOSE 28017
-CMD ["-f", "/etc/mongod.conf"]
+ENTRYPOINT ["/usr/local/bin/confd-watch"]

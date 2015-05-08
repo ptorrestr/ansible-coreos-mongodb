@@ -1,7 +1,22 @@
-FROM debian:jessie
+FROM debian:wheezy
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
-RUN apt-get update
-RUN apt-get install -y mongodb-server
+#Install lsb-release
+RUN apt-get update \
+	&& apt-get install -y lsb-release curl adduser \
+	&& apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10 \
+	&& ( echo 'deb http://downloads-distro.mongodb.org/repo/debian-sysvinit dist 10gen' \
+		| tee /etc/apt/sources.list.d/mongodb.list ) \
+	&& apt-get update
 
-ADD keyfile /etc/keyfile
+# Install mongodb
+RUN apt-get install -y mongodb-10gen
+
+#Install confd
+RUN curl -L https://github.com/kelseyhightower/confd/releases/download/v0.7.1/confd-0.7.1-linux-amd64 -o confd
+RUN chmod +x confd
+RUN cp confd /usr/local/bin/confd
+
+COPY keyfile /etc/keyfile
+RUN chown mongodb /etc/keyfile
+RUN chmod 600 /etc/keyfile

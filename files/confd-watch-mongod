@@ -1,0 +1,40 @@
+#!/bin/bash
+
+APP="mongod"
+DAEMON="mongod"
+CONF="/etc/mongod.conf"
+
+# Capture signals
+trap "service $DAEMON stop; exit" SIGTERM SIGINT SIGQUIT
+
+# Fail hard and fast
+set -eo pipefail
+
+export ETCD_PORT=${ETCD_PORT:-4001}
+export HOST_IP=${HOST_IP:-127.0.0.1}
+export ETCD=$HOST_IP:$ETCD_PORT
+
+echo "[$APP] Booting container. ETCD: $ETCD, Host: $HOST_IP, Port: $PORT"
+
+# Try to make initial configuration ever 5 seconds until successful
+until confd -onetime -node $ETCD -config-file /etc/confd/conf.d/$APP.toml; do
+  echo "[$APP] waiting for confd to create initial $APP configuration."
+  sleep 5
+done
+
+echo "[$APP] Config file:"
+cat $CONF | xargs -L1 echo
+
+# Watch new configurations
+confd -interval 11 -node $ETCD -config-file /etc/confd/conf.d/$APP.toml &
+echo "[$APP] confd is now monitoring etcd for changes in intervals of 11 seconds..."
+
+# Start Mongos service using the generated config
+echo "[$APP] starting $DAEMON service..."
+until service $DAEMON start; do
+  echo "[$APP] waiting for daemon."
+done
+
+# Wait for signal
+echo "[$APP] $DAEMON started"
+read

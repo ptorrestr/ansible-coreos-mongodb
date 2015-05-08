@@ -1,8 +1,11 @@
-FROM debian:jessie
+FROM debian:wheezy
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
+#Create user mongodb
+RUN useradd -r -N -M -u 101 mongodb
+RUN mkdir -p /var/lib/mongodb
+RUN chown mongodb /var/lib/mongodb
 VOLUME /var/lib/mongodb
 COPY forever.sh /forever.sh
 RUN chmod a+x /forever.sh
 CMD /forever.sh
-

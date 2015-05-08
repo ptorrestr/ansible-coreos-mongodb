@@ -1,0 +1,9 @@
+[template]
+
+src = "mongod.conf.tmpl"
+dest = "/etc/mongod.conf"
+keys = [ "/services/mongo/mongod" ]
+owner = "root"
+mode = "0644"
+check_cmd = "/usr/bin/mongod --sysinfo"
+reload_cmd = "/usr/sbin/service mongod reload"

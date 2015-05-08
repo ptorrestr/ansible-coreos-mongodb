@@ -1,10 +1,15 @@
 FROM {{ mongo_image_name }}
 MAINTAINER "Pablo Torres" <pablo.torres.t@gmail.com>
 
-ADD mongos.conf /etc/mongos.conf
-ENTRYPOINT ["/usr/bin/mongos"]
+# Add files
+COPY mongos /etc/init.d/mongos
+COPY mongos.toml /etc/confd/conf.d/mongos.toml
+COPY mongos.conf.tmpl /etc/confd/templates/mongos.conf.tmpl
+COPY confd-watch-mongos /usr/local/bin/confd-watch
+RUN touch /etc/mongos.conf
+RUN chmod +x /etc/init.d/mongos
+RUN chmod +x /usr/local/bin/confd-watch
+RUN update-rc.d mongos defaults
 
-# Expose ports.
-#   - 27017: process
 EXPOSE 27017
-CMD ["-f", "/etc/mongos.conf"]
+ENTRYPOINT ["/usr/local/bin/confd-watch"]

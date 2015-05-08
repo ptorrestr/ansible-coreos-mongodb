@@ -16,7 +16,7 @@ EnvironmentFile=/etc/environment
 Environment="MONGO_SHARDS=/home/core/mongoshards"
 ExecStartPre=/bin/bash -c '\
 	rm -f $MONGO_SHARDS; \
-	mongoshards=`/usr/bin/etcdctl ls /mongodb/rs/rs1`; \
+	mongoshards=`/usr/bin/etcdctl ls /services/mongo/mongod`; \
 	for entry in $mongoshards; do \
 		echo $entry; \
 		/usr/bin/etcdctl get $entry >> $MONGO_SHARDS; \
@@ -33,6 +33,5 @@ ExecStart=/bin/bash -c '\
 	'
 
 [X-Fleet]
-Conflicts=%p@*.service
 MachineOf=mongos@%i.service
 

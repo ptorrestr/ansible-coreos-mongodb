@@ -1,0 +1,36 @@
+[Unit]
+Description=mongod service
+After=docker.service
+Requires=docker.service
+After=etcd.service
+Requires=etcd.service
+
+[Service]
+KillMode=none
+TimeoutStartSec=360
+TimeoutStopSec=360
+EnvironmentFile=/etc/environment
+Environment="MONGOS_NS_LOCAL=/skydns/local/mongo/%p"
+Environment="MONGOS_NS_LOCAL_i=/skydns/local/mongo/%p/%i"
+Environment="MONGOS_URL=%i.%p.mongo.local:%i"
+Environment="MONGOS_NAME=/services/mongo/%p"
+Environment="MONGOS_NAME_i=/services/mongo/%p/%i"
+ExecStartPre=/usr/bin/docker pull {{ mongos_image_name }}
+ExecStartPre=-/usr/bin/docker rm -f %p%i
+ExecStartPre=/bin/bash -c '\
+	DNS=`/usr/bin/etcdctl get /skydns/ip` ; \
+	MONGO_CFGS_CMD=`cat $MONGO_CFGS` ; \
+	/usr/bin/docker create -it --name %p%i -p %i:27017 --dns=$DNS -e HOST_IP=${COREOS_PUBLIC_IPV4} -e PORT=%i {{ mongos_image_name }} ; \
+	'
+ExecStart=/usr/bin/docker start -a %p%i
+ExecStartPost=/usr/bin/etcdctl set $MONGOS_NS_LOCAL_i '{"host":"${COREOS_PUBLIC_IPV4}","port":%i}'
+ExecStartPost=/usr/bin/etcdctl set $MONGOS_NAME_i $MONGOS_URL
+ExecStop=/usr/bin/docker stop -t 60 %p%i
+ExecStopPost=/usr/bin/etcdctl rm $MONGOS_NS_LOCAL_i
+ExecStopPost=/usr/bin/etcdctl rm $MONGOS_NAME_i
+ExecStopPost=-/usr/bin/etcdctl rm --dir $MONGOS_NS_LOCAL
+ExecStopPost=-/usr/bin/etcdctl rm --dir $MONGOS_NAME
+ExecStopPost=-/usr/bin/docker rm -f %p%i
+Restart=on-failure
+
+[X-Fleet]
