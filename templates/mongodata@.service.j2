@@ -12,6 +12,7 @@ TimeoutStopSec=360
 EnvironmentFile=/etc/environment
 ExecStartPre=/usr/bin/docker pull {{ mongodata_image_name }} 
 ExecStartPre=-/usr/bin/docker rm %p%i
+ExecStartPre=/bin/mkdir -p /data/%p%i
 ExecStart=/usr/bin/docker run --rm --name %p%i {{ mongodata_image_name }}
 ExecStop=/usr/bin/docker stop %p%i
 ExecStopPost=-/usr/bin/docker rm %p%i
